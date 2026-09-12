@@ -10,6 +10,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      ANDROID_HOME: /opt/android-sdk
+      ANDROID_SDK_ROOT: /opt/android-sdk
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -20,6 +24,16 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Install Android SDK tools
+        shell: bash
+        run: |
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/cmdline-tools.zip
+          rm -rf /tmp/cmdline-tools
+          unzip -q /tmp/cmdline-tools.zip -d /tmp
+          rm -rf "$ANDROID_HOME/cmdline-tools/latest"
+          mv /tmp/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
+
       - name: Prepare project config files
         shell: bash
         run: |
@@ -28,14 +42,12 @@ jobs:
           printf 'api.useLocal=false\n' >> local.properties
           chmod +x ./gradlew
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install SDK packages
+      - name: Install SDK packages and accept licenses
         shell: bash
         run: |
-          yes | sdkmanager --licenses
-          sdkmanager --install "platform-tools" "platforms;android-37" "build-tools;36.0.0" "cmake;3.22.1" "ndk;29.0.13113456"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            --install "platform-tools" "platforms;android-37" "build-tools;36.0.0" "cmake;3.22.1" "ndk;29.0.13113456"
 
       - name: Build debug APK
         shell: bash
