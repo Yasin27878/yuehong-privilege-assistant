@@ -12,6 +12,8 @@ jobs:
 
     env:
       JAVA_HOME: /usr/lib/jvm/temurin-21-jdk-amd64
+      ANDROID_HOME: /opt/android-sdk
+      ANDROID_SDK_ROOT: /opt/android-sdk
 
     steps:
       - name: Checkout repository
@@ -23,14 +25,28 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install Android command line tools
+        shell: bash
+        run: |
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          if [ ! -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/cmdline-tools.zip
+            unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools
+            rm -rf "$ANDROID_HOME/cmdline-tools/latest"
+            mv /tmp/cmdline-tools/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
+          fi
 
       - name: Install Android SDK components
         shell: bash
         run: |
-          sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --install "platform-tools" "platforms;android-37" "build-tools;36.0.0" "cmake;3.22.1" "ndk;29.0.13113456"
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-37" \
+            "build-tools;36.0.0" \
+            "cmake;3.22.1" \
+            "ndk;29.0.13113456"
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
           chmod +x ./gradlew
 
       - name: Build debug APK
